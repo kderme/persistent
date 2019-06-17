@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
@@ -16,6 +17,8 @@ module Database.Persist.Sqlite
     , withSqliteConnInfo
     , createSqlitePool
     , createSqlitePoolFromInfo
+    , createSqliteAsyncQueue
+    , createSqliteAsyncPool
     , module Database.Persist.Sql
     , SqliteConf (..)
     , SqliteConnectionInfo
@@ -33,6 +36,7 @@ module Database.Persist.Sqlite
     , waitForDatabase
     ) where
 
+import Control.Concurrent.Async.Queue
 import Control.Concurrent (threadDelay)
 import qualified Control.Exception as E
 import Control.Monad (forM_)
@@ -58,7 +62,6 @@ import Lens.Micro.TH (makeLenses)
 import UnliftIO.Resource (ResourceT, runResourceT)
 
 import Database.Persist.Sql
-import Database.Persist.Sql.Types.Internal (mkPersistBackend)
 import qualified Database.Persist.Sql.Util as Util
 import qualified Database.Sqlite as Sqlite
 
@@ -71,6 +74,19 @@ import qualified Database.Sqlite as Sqlite
 createSqlitePool :: (MonadLogger m, MonadUnliftIO m)
                  => Text -> Int -> m (Pool SqlBackend)
 createSqlitePool = createSqlitePoolFromInfo . conStringToInfo
+
+createSqliteAsyncQueue :: (MonadLogger m, MonadUnliftIO m)
+                       => Text -> m (AsyncQueue SqlBackend)
+createSqliteAsyncQueue str = do
+    logFunc <- askLogFunc
+    liftIO $ asyncQueueBound 1000 $ open' (conStringToInfo str) logFunc
+
+createSqliteAsyncPool :: (MonadLogger m, MonadUnliftIO m)
+    => Text -> Int -> m (AsyncWithPool SqlBackend)
+createSqliteAsyncPool str n = do
+    q <- createSqliteAsyncQueue str
+    p <- createSqlitePool str n
+    return $ mkAsyncWithPool q p
 
 -- | Create a pool of SQLite connections.
 --

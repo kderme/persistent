@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Database.Persist.Sql.Run where
 
+import Control.Concurrent.Async.Queue
 import Control.Exception (bracket, mask, onException)
 import Control.Monad (liftM)
 import Control.Monad.IO.Unlift
@@ -57,6 +58,24 @@ withResourceTimeout ms pool act = withRunInIO $ \runInIO -> mask $ \restore -> d
             putResource local resource
             return ret
 {-# INLINABLE withResourceTimeout #-}
+
+runSqlAsyncQueue :: (MonadUnliftIO m, BackendCompatible SqlBackend backend) => ReaderT backend m a -> AsyncQueue backend -> m a
+runSqlAsyncQueue r q = withRunInIO $ \run ->
+    waitQueue False q $ run . runSqlConn r
+
+runSqlAsyncWrite :: (MonadUnliftIO m, BackendCompatible SqlBackend backend) => ReaderT backend m a -> AsyncWithPool backend -> m a
+runSqlAsyncWrite r a = runSqlAsyncQueue r (queue a)
+
+runSqlAsyncRead :: (MonadUnliftIO m, BackendCompatible SqlBackend backend) => ReaderT backend m a -> AsyncWithPool backend -> m a
+runSqlAsyncRead r a = runSqlPool r $ pool a
+
+closeSqlAsyncPool :: (BackendCompatible SqlBackend backend) => AsyncWithPool backend -> IO ()
+closeSqlAsyncPool (AsyncWithPool q p) = do
+    closeSqlAsyncQueue q
+    destroyAllResources p
+
+closeSqlAsyncQueue :: (BackendCompatible SqlBackend backend) => AsyncQueue backend -> IO ()
+closeSqlAsyncQueue q = waitQueue True q close'
 
 runSqlConn :: (MonadUnliftIO m, BackendCompatible SqlBackend backend) => ReaderT backend m a -> backend -> m a
 runSqlConn r conn = withRunInIO $ \runInIO -> mask $ \restore -> do

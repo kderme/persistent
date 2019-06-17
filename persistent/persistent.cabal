@@ -24,6 +24,7 @@ library
 
     build-depends:   base                     >= 4.9       && < 5
                    , aeson                    >= 1.0
+                   , async-queue
                    , attoparsec
                    , base64-bytestring
                    , blaze-html               >= 0.9
