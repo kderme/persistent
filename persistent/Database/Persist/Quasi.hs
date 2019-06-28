@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Database.Persist.Quasi
     ( parse
     , PersistSettings (..)
@@ -223,6 +225,8 @@ fixForeignKeysAll unEnts = map fixForeignKeys unEnts
     -- check the count and the sqltypes match and update the foreignFields with the names of the primary columns
     fixForeignKey :: EntityDef -> UnboundForeignDef -> ForeignDef
     fixForeignKey ent (UnboundForeignDef foreignFieldTexts fdef) =
+--     case error (show $ show ent ++ "-" ++ show (UnboundForeignDef foreignFieldTexts fdef) ++ "-" ++ show (entLookup))
+--     of () ->
         case M.lookup (foreignRefTableHaskell fdef) entLookup of
           Just pent -> case entityPrimary pent of
              Just pdef ->
@@ -294,8 +298,8 @@ mkEntityDef :: PersistSettings
             -> [Attr] -- ^ entity attributes
             -> [Line] -- ^ indented lines
             -> UnboundEntityDef
-mkEntityDef ps name entattribs lines =
-  UnboundEntityDef foreigns $
+mkEntityDef ps name entattribs lines = --  if name == "Person" then
+  (UnboundEntityDef foreigns $
     EntityDef
         entName
         (DBName $ getDbName ps name' entattribs)
@@ -310,7 +314,7 @@ mkEntityDef ps name entattribs lines =
         derives
         extras
         isSum
-        comments
+        comments) -- else error $ show attribs
   where
     comments = Nothing
     entName = HaskellName name'
@@ -520,7 +524,7 @@ takeUniq _ tableName _ xs =
 data UnboundForeignDef = UnboundForeignDef
                          { _unboundFields :: [Text] -- ^ fields in other entity
                          , _unboundForeignDef :: ForeignDef
-                         }
+                         } deriving Show
 
 takeForeign :: PersistSettings
           -> Text
