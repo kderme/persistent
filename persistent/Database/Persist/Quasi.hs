@@ -228,7 +228,7 @@ fixForeignKeysAll unEnts = map fixForeignKeys unEnts
 --     case error (show $ show ent ++ "-" ++ show (UnboundForeignDef foreignFieldTexts fdef) ++ "-" ++ show (entLookup))
 --     of () ->
         case M.lookup (foreignRefTableHaskell fdef) entLookup of
-          Just pent -> case entityPrimary pent of
+          Just pent -> case entityPrimary pent of -- TODO test also entityUniques.
              Just pdef ->
                  if length foreignFieldTexts /= length (compositeFields pdef)
                    then lengthError pdef
