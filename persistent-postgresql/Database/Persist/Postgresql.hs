@@ -1253,7 +1253,7 @@ findAlters defs edef col@(Column name isNull sqltype def _gen _defConstraintName
                             error $ "could not find the entityDef for reftable["
                                 ++ show (crTableName colRef) ++ "]"
                 modRef =
-                    if fmap crConstraintName ref == fmap crConstraintName ref'
+                    if ref == ref'
                         then []
                         else refDrop ref' ++ refAdd ref
                 modNull = case (isNull, isNull') of
