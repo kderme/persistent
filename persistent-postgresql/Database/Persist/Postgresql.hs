@@ -398,27 +398,32 @@ insertSql' ent vals =
         ]
 
 
-upsertSql' :: EntityDef -> NonEmpty (FieldNameHS, FieldNameDB) -> Text -> Text
-upsertSql' ent uniqs updateVal =
-    T.concat
+upsertSql' :: EntityDef -> [(FieldNameHS, FieldNameDB)] -> Maybe Text -> Text
+upsertSql' ent uniqs mUpdateVal =
+    T.concat $
         [ "INSERT INTO "
         , escapeE (entityDB ent)
         , "("
         , T.intercalate "," fieldNames
         , ") VALUES ("
         , T.intercalate "," placeholders
-        , ") ON CONFLICT ("
-        , T.intercalate "," $ map (escapeF . snd) (NEL.toList uniqs)
-        , ") DO UPDATE SET "
-        , updateVal
-        , " WHERE "
-        , wher
-        , " RETURNING ??"
-        ]
-  where
-    (fieldNames, placeholders) = unzip (Util.mkInsertPlaceholders ent escapeF)
+        , ") ON CONFLICT "
+        ] ++ updatePart
 
-    wher = T.intercalate " AND " $ map (singleClause . snd) $ NEL.toList uniqs
+  where
+    updatePart = case mUpdateVal of
+        Nothing -> ["DO NOTHING RETURNING ??"]
+        Just updateVal  ->
+            [ "("
+            , T.intercalate "," $ map (escapeF . snd) uniqs
+            , ") DO UPDATE SET "
+            , updateVal
+            , " WHERE "
+            , T.intercalate " AND " $ map (singleClause . snd) uniqs
+            , " RETURNING ??"
+            ]
+
+    (fieldNames, placeholders) = unzip (Util.mkInsertPlaceholders ent escapeF)
 
     singleClause :: FieldNameDB -> Text
     singleClause field = escapeE (entityDB ent) <> "." <> (escapeF field) <> " =?"

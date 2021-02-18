@@ -101,7 +101,7 @@ data SqlBackend = SqlBackend
     -- ^ SQL for inserting many rows and returning their primary keys, for
     -- backends that support this functionality. If 'Nothing', rows will be
     -- inserted one-at-a-time using 'connInsertSql'.
-    , connUpsertSql :: Maybe (EntityDef -> NonEmpty (FieldNameHS, FieldNameDB) -> Text -> Text)
+    , connUpsertSql :: Maybe (EntityDef -> [(FieldNameHS, FieldNameDB)] -> Maybe Text -> Text)
     -- ^ Some databases support performing UPSERT _and_ RETURN entity
     -- in a single call.
     --

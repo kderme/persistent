@@ -28,17 +28,17 @@ instance PersistUniqueWrite SqlBackend where
       let refCol n = T.concat [connEscapeTableName conn t, ".", n]
       let mkUpdateText = mkUpdateText' (connEscapeFieldName conn) refCol
       case connUpsertSql conn of
-        Just upsertSql -> case updates of
-                            [] -> defaultUpsertBy uniqueKey record updates
-                            _:_ -> do
-                                let upds = T.intercalate "," $ map mkUpdateText updates
-                                    sql = upsertSql t (NEL.fromList $ persistUniqueToFieldNames uniqueKey) upds
-                                    vals = map toPersistValue (toPersistFields record)
-                                        ++ map updatePersistValue updates
-                                        ++ unqs uniqueKey
-
-                                x <- rawSql sql vals
-                                return $ head x
+        Just upsertSql -> do
+          let (uniqueVals, upds) = case updates of
+                [] -> ([], Nothing)
+                _  -> (unqs uniqueKey, Just $ T.intercalate "," $ map mkUpdateText updates)
+              sql = upsertSql t (persistUniqueToFieldNames uniqueKey) upds
+              vals = map toPersistValue (toPersistFields record)
+                  ++ map updatePersistValue updates
+                  ++ uniqueVals
+          x <- rawSql sql vals
+          error $ show $ length x
+          return $ head x
         Nothing -> defaultUpsertBy uniqueKey record updates
         where
           t = entityDef $ Just record
